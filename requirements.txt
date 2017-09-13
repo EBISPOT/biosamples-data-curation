@@ -1,0 +1,20 @@
+pip install future
+pip import six
+
+# Python dictionary
+pip install pyenchant
+pip install fuzzywuzzy
+
+pip install requests
+
+pip install pandas
+pip install numpy
+pip install nltk  # note other modules needed
+pip install matplotlib
+pip install networkx
+
+
+
+
+
+
