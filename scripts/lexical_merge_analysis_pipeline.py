@@ -451,14 +451,32 @@ if __name__ == '__main__':
 
     # Output data to files
     TIMESTAMP = get_timestamp()
-    with open("no_typos_confirmed_merges_"+TIMESTAMP+".csv", "w") as confirmed_merge_no_typos_out:
+    # Confirmed merges
+    with open("merge_confirmed_"+TIMESTAMP+".csv", "w") as confirmed_merge_no_typos_out:
         csvout = csv.writer(confirmed_merge_no_typos_out)
         for merge_pair in confirmed_merge_pairs:
             csvout.writerow([merge_pair[0], merge_pair[1], "no_typos"])
         
         for mmtc in more_merges_to_confirmed:
-            csvout.writerow([mmtc[0], mmtc[1], "pair_with_typo"])
-   
+            csvout.writerow([mmtc[0], mmtc[2], "pair_with_typo"])
+
+        for mcmbuat in more_conf_merges_between_unconfirmed_and_typos:
+            csvout.writerow([mcmbuat[0], mcmbuat[1], "typo_no_typo"])
+
+        for tcmp in typos_confirmed_merge_pairs:
+            csvout.writerow([tcmp[0], tcmp[1], "typo"])
 
 
+
+    # Merges for manual review
+    with open("merge_after_manual_review_"+TIMESTAMP+".csv", "w") as merge_with_manual_review_out:
+        csvout = csv.writer(merge_with_manual_review_out)
+        for ump in unconfirmed_merge_pairs:
+            csvout.writerow([ump[0], ump[1], "no_typos"])
+
+        for mumbuat in more_unconf_merges_between_unconfirmednotypos_and_typos:
+            csvout.writerow([mumbuat[0], mumbuat[1], "typo_no_typo"])
+
+        for tump in typos_unconfirmed_merge_pairs:
+            csvout.writerow([tump[0], tump[1], "typos"])
 
