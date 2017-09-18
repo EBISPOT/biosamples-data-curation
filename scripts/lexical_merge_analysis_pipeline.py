@@ -39,6 +39,9 @@ import progressbar
 from time import sleep
 from tqdm import *
 
+import operator
+from multiprocessing import Process, Pool, Value, Array
+
 
 # Methods
 def get_timestamp():
@@ -222,8 +225,8 @@ def check_for_fuzzy_matches(attribute_types):
     match_pair_score = ()
     seen_attr_types = []
 
-    print("Number to analyze: ", len(attribute_types))
-    for attr1 in tqdm(attribute_types, ascii=True, desc="Check-for-fuzzy-matches", ncols=100):
+    # print("Number to analyze: ", len(attribute_types))
+    for attr1 in attribute_types:
         for attr2 in attribute_types:
             if attr1 in seen_attr_types:
                 pass
@@ -246,14 +249,17 @@ def secondary_fuzzy_match_check(matches):
     Apply fuzzy match checking on each token. 
     Account for difference in numbers of tokens in matches and stop words.
     """
+    # matches = args[0]
+    # attribute_type_dict = args[1]
     confirmed_matches = []
     unconfirmed_matches = []
+    results = {}
 
     # Customize stopword list
     stopWords = set(stopwords.words('english'))
     stopWords.remove('m')
 
-    for match_pair in tqdm(matches, ascii=True, desc="Secondary-fuzzy-match-check", ncols=100):
+    for match_pair in matches:
         mp1_tokens = attribute_type_dict[match_pair[0]]["tokens"]
         mp2_tokens = attribute_type_dict[match_pair[1]]["tokens"]
         match_score = match_pair[2]
@@ -264,7 +270,6 @@ def secondary_fuzzy_match_check(matches):
             # Remove stopwords
             mp1_tokens_filtered = [w.lower() for w in mp1_tokens if not w.lower() in stopWords]
             mp2_tokens_filtered = [w.lower() for w in mp2_tokens if not w.lower() in stopWords]
-            # print(mp1_tokens_filtered, mp2_tokens_filtered)
 
             # Check Fuzzy match score on individual tokens with stopwords/tokens removed
             fm_score_100_count = 0
@@ -294,7 +299,10 @@ def secondary_fuzzy_match_check(matches):
                 else:
                     unconfirmed_matches.extend([match_pair])
   
-    return confirmed_matches, unconfirmed_matches
+    # return confirmed_matches, unconfirmed_matches
+    results["confirmed_matches"] = confirmed_matches
+    results["unconfirmed_matches"] = unconfirmed_matches
+    return results
 
 
 @timing
@@ -360,7 +368,7 @@ def check_for_fuzzy_matches_between_unconfirmed_and_typo_group(*args):
             # fm_score_100_count += 1
             # NEW ==> Should compare token number after removing stopwords and lemmatization???
             if len(attribute_type_dict[attr1]["tokens"]) == len(attribute_type_dict[attr2]["tokens"]):
-                print(attr1, attr2, len(attribute_type_dict[attr1]["tokens"]), len(attribute_type_dict[attr2]["tokens"]))
+                # print(attr1, attr2, len(attribute_type_dict[attr1]["tokens"]), len(attribute_type_dict[attr2]["tokens"]))
                 match_pair = (attr1, attr2, fuzz_score)
                 confirmed_merge_typo_list.append(match_pair)
         if fuzz_score > 90 and fuzz_score != 100:
@@ -396,61 +404,65 @@ if __name__ == '__main__':
     no_typos, at_typos = check_for_typos(attribute_type_dict)
     print("** No typos:", len(no_typos), "Typos:", len(at_typos))
 
-    # # Check for fuzzy matches amongst attr_types with no typos
+    # Check for fuzzy matches amongst attr_types with no typos
     # no_typos_all_matches = check_for_fuzzy_matches(no_typos)
+    pool = Pool(5)
+    no_typos_all_matches = pool.map(check_for_fuzzy_matches, [no_typos])
+    print("** NTAM: ", no_typos_all_matches[0])
 
-    # confirmed_merge_pairs, unconfirmed_merge_pairs = secondary_fuzzy_match_check(no_typos_all_matches)
-    # print("** Confirmed merge pairs in no typos: ", len(confirmed_merge_pairs))
-    # # print("Confirmed: ", confirmed_merge_pairs)
-    # print("** Unconfirmed merge pairs in no typos: ", len(unconfirmed_merge_pairs))
+    # confirmed_merge_pairs, unconfirmed_merge_pairs = secondary_fuzzy_match_check(no_typos_all_matches[0])
+    results = pool.map(secondary_fuzzy_match_check, no_typos_all_matches)
+    confirmed_merge_pairs = results[0]["confirmed_matches"]
+    unconfirmed_merge_pairs = results[0]["unconfirmed_matches"]
+    print("** Confirmed merge pairs in no typos: ", len(confirmed_merge_pairs))
+    print("** Unconfirmed merge pairs in no typos: ", len(unconfirmed_merge_pairs))
 
-    # # Check for matches between confirmed merge attribute types
-    # # and attribute types with typos
-    # more_merges_to_confirmed = check_for_fuzzy_matches_between_confirmed_and_typo_group(confirmed_merge_pairs, at_typos)
-    # print("** More possible merges between no typos(confirmed merge group) and typos group: ", len(more_merges_to_confirmed), "\n")
+    # Check for matches between confirmed merge attribute types
+    # and attribute types with typos
+    more_merges_to_confirmed = check_for_fuzzy_matches_between_confirmed_and_typo_group(confirmed_merge_pairs, at_typos)
+    print("** More possible merges between no typos(confirmed merge group) and typos group: ", len(more_merges_to_confirmed), "\n")
 
-    # # Check for matches between attribute types in unconfirmed_merge_pairs set(from no_typos) 
-    # # and those in the set with typos
-    # more_conf_merges_between_unconfirmed_and_typos, more_unconf_merges_between_unconfirmednotypos_and_typos = check_for_fuzzy_matches_between_unconfirmed_and_typo_group(unconfirmed_merge_pairs, at_typos)
-    # print("** More _confirmed_ merges with no typo merge set: ", len(more_conf_merges_between_unconfirmed_and_typos), "\n")
-    # print("** More possible merges between no typo(unconfirmed) and typos group: ", len(more_unconf_merges_between_unconfirmednotypos_and_typos))
+    # Check for matches between attribute types in unconfirmed_merge_pairs set(from no_typos) 
+    # and those in the set with typos
+    more_conf_merges_between_unconfirmed_and_typos, more_unconf_merges_between_unconfirmednotypos_and_typos = check_for_fuzzy_matches_between_unconfirmed_and_typo_group(unconfirmed_merge_pairs, at_typos)
+    print("** More _confirmed_ merges with no typo merge set: ", len(more_conf_merges_between_unconfirmed_and_typos), "\n")
+    print("** More possible merges between no typo(unconfirmed) and typos group: ", len(more_unconf_merges_between_unconfirmednotypos_and_typos))
     
-    # # Check for fuzzy matches amongst typos list
-    # typos_all_matches = check_for_fuzzy_matches(at_typos)
-    # typos_confirmed_merge_pairs, typos_unconfirmed_merge_pairs = secondary_fuzzy_match_check(typos_all_matches)
-    # print("** Confirmed Typo merge pairs: ", len(typos_confirmed_merge_pairs))
-    # print("** Unconfirmed Typo merge pairs: ", len(typos_unconfirmed_merge_pairs))
+    # Check for fuzzy matches amongst typos list
+    typos_all_matches = check_for_fuzzy_matches(at_typos)
+    typos_confirmed_merge_pairs, typos_unconfirmed_merge_pairs = secondary_fuzzy_match_check(typos_all_matches)
+    print("** Confirmed Typo merge pairs: ", len(typos_confirmed_merge_pairs))
+    print("** Unconfirmed Typo merge pairs: ", len(typos_unconfirmed_merge_pairs))
 
 
-    # # Output data to files
-    # TIMESTAMP = get_timestamp()
-    # # Confirmed merges
-    # with open("merge_confirmed_"+TIMESTAMP+".csv", "w") as confirmed_merge_no_typos_out:
-    #     csvout = csv.writer(confirmed_merge_no_typos_out)
+    # Output data to files
+    TIMESTAMP = get_timestamp()
+    # Confirmed merges
+    with open("merge_confirmed_"+TIMESTAMP+".csv", "w") as confirmed_merge_no_typos_out:
+        csvout = csv.writer(confirmed_merge_no_typos_out)
 
-    #     for merge_pair in confirmed_merge_pairs:
-    #         csvout.writerow([merge_pair[0], merge_pair[1], "no_typos"])
+        for merge_pair in confirmed_merge_pairs:
+            csvout.writerow([merge_pair[0], merge_pair[1], "no_typos"])
         
-    #     for mmtc in more_merges_to_confirmed:
-    #         csvout.writerow([mmtc[0], mmtc[2], "pair_with_typo"])
+        for mmtc in more_merges_to_confirmed:
+            csvout.writerow([mmtc[0], mmtc[2], "pair_with_typo"])
 
-    #     for mcmbuat in more_conf_merges_between_unconfirmed_and_typos:
-    #         csvout.writerow([mcmbuat[0], mcmbuat[1], "typo_no_typo"])
+        for mcmbuat in more_conf_merges_between_unconfirmed_and_typos:
+            csvout.writerow([mcmbuat[0], mcmbuat[1], "typo_no_typo"])
 
-    #     for tcmp in typos_confirmed_merge_pairs:
-    #         csvout.writerow([tcmp[0], tcmp[1], "typo"])
+        for tcmp in typos_confirmed_merge_pairs:
+            csvout.writerow([tcmp[0], tcmp[1], "typo"])
 
 
+    # Merges for manual review
+    with open("merge_after_manual_review_"+TIMESTAMP+".csv", "w") as merge_with_manual_review_out:
+        csvout = csv.writer(merge_with_manual_review_out)
+        for ump in unconfirmed_merge_pairs:
+            csvout.writerow([ump[0], ump[1], "no_typos"])
 
-    # # Merges for manual review
-    # with open("merge_after_manual_review_"+TIMESTAMP+".csv", "w") as merge_with_manual_review_out:
-    #     csvout = csv.writer(merge_with_manual_review_out)
-    #     for ump in unconfirmed_merge_pairs:
-    #         csvout.writerow([ump[0], ump[1], "no_typos"])
+        for mumbuat in more_unconf_merges_between_unconfirmednotypos_and_typos:
+            csvout.writerow([mumbuat[0], mumbuat[1], "typo_no_typo"])
 
-    #     for mumbuat in more_unconf_merges_between_unconfirmednotypos_and_typos:
-    #         csvout.writerow([mumbuat[0], mumbuat[1], "typo_no_typo"])
-
-    #     for tump in typos_unconfirmed_merge_pairs:
-    #         csvout.writerow([tump[0], tump[1], "all_typos"])
+        for tump in typos_unconfirmed_merge_pairs:
+            csvout.writerow([tump[0], tump[1], "all_typos"])
 
