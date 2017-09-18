@@ -429,8 +429,10 @@ if __name__ == '__main__':
     print("** More possible merges between no typo(unconfirmed) and typos group: ", len(more_unconf_merges_between_unconfirmednotypos_and_typos))
     
     # Check for fuzzy matches amongst typos list
-    typos_all_matches = check_for_fuzzy_matches(at_typos)
-    typos_confirmed_merge_pairs, typos_unconfirmed_merge_pairs = secondary_fuzzy_match_check(typos_all_matches)
+    typos_all_matches = pool.map(check_for_fuzzy_matches, [at_typos])
+    results = pool.map(secondary_fuzzy_match_check, typos_all_matches)
+    typos_confirmed_merge_pairs = results[0]["confirmed_matches"]
+    typos_unconfirmed_merge_pairs = results[0]["unconfirmed_matches"]
     print("** Confirmed Typo merge pairs: ", len(typos_confirmed_merge_pairs))
     print("** Unconfirmed Typo merge pairs: ", len(typos_unconfirmed_merge_pairs))
 
