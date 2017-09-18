@@ -33,6 +33,10 @@ from nltk import pos_tag
 from nltk.corpus import stopwords
 from nltk.corpus import wordnet
 
+import progressbar
+from time import sleep
+from tqdm import *
+
 
 # Methods
 def get_timestamp():
@@ -75,29 +79,30 @@ def read_attr_type_file():
         counter += 1
         inner_dict = {}
         
-        # Split on facet and usage
+        # Split on facet name and frequency
         attr_type, value = item.split(',')
         # Reformat attr_type, remove '_facet' suffix
         split_attr_type, junk = attr_type.split('_')
         
-        # split on uppercase letter to generate tokens from facets
+        # Split on uppercase letter to generate tokens from facets
         formatted_attr_type_list = re.findall('[0-9a-zA-Z][^A-Z]*', split_attr_type)
         formatted_attr_type = ' '.join(formatted_attr_type_list)
-        # print("FAT: ", formatted_attr_type)
 
+        # Create inner dictionary keys and values
         inner_dict['usage_count'] = value.strip()
         inner_dict['tokens'] = formatted_attr_type_list
         inner_dict['with_spaces'] = formatted_attr_type
-        
-        attribute_type_dict[attr_type] = inner_dict
     
-    # for k,v in iteritems(attribute_type_dict):
-    #     print(k, v['tokens'])
+        # Build dictionary with number of attribute types to analyze    
+        if counter <= args.num_attr_review:
+            attribute_type_dict[split_attr_type] = inner_dict
+
     
     print("Total number of Attribute Types: ", len(attribute_type_dict.keys()))
     return attribute_type_dict
 
 
+# NOT CURRENTLY USED
 def read_no_typos_attr_type():
     """
     Read file of known list of attribute types with typos.
@@ -169,17 +174,17 @@ def check_for_typos(at_token_dict):
     mywords = enchant.DictWithPWL("en_US","../master-data/biosamples-lexical-dictionary/mywords.txt")
 
     for attr_type, attr_type_data in iteritems(at_token_dict):
+        # print(attr_type, attr_type_data)
         counter += 1
-        # print("Tokens: ",attr_type_data['tokens'])
         attr_type_validator = validator.AttrTypeValidator(attr_type_data['with_spaces'])
 
         # Check for known categories of attribute types that 
-        #will not pass a dictionary test, e.g. string of sequences, contains numbers, etc.
+        # will not pass a dictionary test, e.g. string of sequences, contains numbers, etc.
         if attr_type_validator.check_for_sequence_strings():
             attr_type_as_sequences.append(attr_type)
 
         if attr_type_validator.check_for_numbers():
-            #Note: Some attr_types can contain numbers and still be "mergable" attribute types, e.g. CD4
+            # Note: Some attr_types can contain numbers and still be "mergable" attribute types, e.g. CD4
             attr_type_with_numbers.append(attr_type)
 
         # Check for attr_type for typos
@@ -189,9 +194,8 @@ def check_for_typos(at_token_dict):
             and counter < int(args.num_attr_review):
             
             token_list = attr_type_data['tokens']
-            # print("\n**TokenList: ", token_list)
             for token in token_list:
-                # check token for typos
+                # Check token for typos using custom dictionary
                 is_correct_mywords = mywords.check(token)
 
                 if is_correct_mywords:
@@ -211,58 +215,29 @@ def check_for_typos(at_token_dict):
 @timing
 def check_for_fuzzy_matches(attribute_types):
     """
-    For attr_type with one or more tokens that do not pass 
-    the dictionary test, check if this attr_type closely matches 
-    other attr_types. RE-DO DESC
+    For attribute types with all tokens that pass 
+    the dictionary test, check if attribute type 
+    closely matches other attribute types.
     """
-    print("Checking for fuzzy matches...")
-
-    # TIMESTAMP = get_timestamp()
-    # filename = "attr_type_with_NO_typos_to_merge_"+TIMESTAMP+".csv"
-    # save_directory_path = "/Users/twhetzel/git/biosamples-data-mining/data_results"
-    # data_directory = "NoTypoAttrType"
-    # completeName = os.path.join(save_directory_path, data_directory, filename)
-
-    # outfile = open(completeName, "w")
-    # csvout = csv.writer(outfile)
-    # csvout.writerow(["Attr1", "Attr2", "FM_Score", "Attr1_Usage", "Attr2_Usage"])
-
-    # all_attribute_types = attribute_type_dict.keys()
     all_matches = []
     match_pair_score = ()
-    copy_attribute_types = attribute_types[:]
+    seen_attr_types = []
 
-    # all_list_pairs = list(itertools.product(attribute_types[:500], attribute_types[:500]))
-    # print(all_list_pairs)
-    # print("Len-AllPairs: ", len(all_list_pairs))
+    print("Number to analyze: ", len(attribute_types))
+    for attr1 in tqdm(attribute_types, ascii=True, desc="Check-for-fuzzy-matches", ncols=100):
+        for attr2 in attribute_types:
+            if attr1 in seen_attr_types:
+                pass
+            else:
+                # Check for merges due to case/space differences
+                fuzzy_match_score = fuzz.ratio(attr1.lower(), attr2.lower())
 
-    counter = 0
-    print("NumRev: ", args.num_attr_review)
-    for attr1 in attribute_types:
-        for attr2 in copy_attribute_types:
-            fuzzy_match_score = fuzz.ratio(attribute_type_dict[attr1]["with_spaces"], \
-                attribute_type_dict[attr2]["with_spaces"])
-            
-            if fuzzy_match_score > 90 and attr1 != attr2:  #fuzzy_match_score != 100:
-                counter += 1
+                if fuzzy_match_score > 90 and attr1 != attr2:
+                    match_pair_score = (attr1, attr2, fuzzy_match_score)
+                    all_matches.append(match_pair_score)
 
-                match_pair_score = (attr1, attr2, fuzzy_match_score)
-                all_matches.append(match_pair_score)
+                    seen_attr_types.append(attr2)
 
-                # copy_attribute_types.remove(attr2)
-                # print("\n",match_pair_score)
-                # print("Remove this attr_type:", attr2)
-                if attr2 in attribute_types:
-                    attribute_types.remove(attr2)
-
-
-                # csvout.writerow([attr1, attr2, fuzzy_match_score, attribute_type_dict[attr1], attribute_type_dict[attr2]])
-                # print("("+str(counter)+")", attribute_type_dict[attr1]["with_spaces"], "--", \
-                #     attribute_type_dict[attr2]["with_spaces"], fuzzy_match_score)
-
-    # print("All Matches: ", all_matches)
-    # print("Count All Matches: ", len(all_matches))
-    # outfile.close()
     return all_matches
 
 
@@ -272,93 +247,87 @@ def secondary_fuzzy_match_check(matches):
     Apply fuzzy match checking on each token. 
     Account for difference in numbers of tokens in matches and stop words.
     """
-    total_confirmed_match_pairs = 0
     confirmed_matches = []
     unconfirmed_matches = []
 
-    for match_pair in matches:
+    # Customize stopword list
+    stopWords = set(stopwords.words('english'))
+    stopWords.remove('m')
+
+    for match_pair in tqdm(matches, ascii=True, desc="Secondary-fuzzy-match-check", ncols=100):
         mp1_tokens = attribute_type_dict[match_pair[0]]["tokens"]
         mp2_tokens = attribute_type_dict[match_pair[1]]["tokens"]
+        match_score = match_pair[2]
 
-        # Remove stopwords
-        mp1_tokens_filtered = [w for w in mp1_tokens if not w in stopwords.words('english')]
-        mp2_tokens_filtered = [w for w in mp2_tokens if not w in stopwords.words('english')]
-        # print(mp1_tokens_filtered, mp2_tokens_filtered)
-
-        # Check Fuzzy match score on individual tokens with stopwords/tokens removed
-        fm_score_100_count = 0
-        non_matching_fuzz_scores = []
-        if len(mp1_tokens_filtered) != len(mp2_tokens_filtered):
-            # print("Can't check these...", mp1_tokens_filtered, mp2_tokens_filtered)
-            unconfirmed_matches.extend([match_pair])
+        if match_score == 100:
+            confirmed_matches.extend([match_pair])
         else:
-            for mp1_token, mp2_token in zip(mp1_tokens_filtered, mp2_tokens_filtered):
-                morphed_mp1_token = wordnet.morphy(mp1_token)
-                morphed_mp2_token = wordnet.morphy(mp2_token)
+            # Remove stopwords
+            mp1_tokens_filtered = [w.lower() for w in mp1_tokens if not w.lower() in stopWords]
+            mp2_tokens_filtered = [w.lower() for w in mp2_tokens if not w.lower() in stopWords]
+            # print(mp1_tokens_filtered, mp2_tokens_filtered)
 
-                if morphed_mp1_token == None:
-                    morphed_mp1_token = mp1_token
-                if morphed_mp2_token == None:
-                    morphed_mp2_token = mp2_token
-                fuzz_score = fuzz.ratio(morphed_mp1_token, morphed_mp2_token)
-                
-                if fuzz_score == 100:
-                    fm_score_100_count += 1
-                else:
-                    non_matching_fuzz_scores.append(fuzz_score)
-
-            if fm_score_100_count == len(mp1_tokens_filtered):
-                total_confirmed_match_pairs += 1
-                confirmed_matches.extend([match_pair])
-                # print("** These attr_types match!", "'"+attribute_type_dict[match_pair[0]]["with_spaces"]+"'", \
-                #     "'"+attribute_type_dict[match_pair[1]]["with_spaces"]+"'\n")
-            else:
+            # Check Fuzzy match score on individual tokens with stopwords/tokens removed
+            fm_score_100_count = 0
+            non_matching_fuzz_scores = []
+            if len(mp1_tokens_filtered) != len(mp2_tokens_filtered):
                 unconfirmed_matches.extend([match_pair])
-                # print("** Need to manually check these (FuzzScore: "+str(non_matching_fuzz_scores)+"): ", "'"+attribute_type_dict[match_pair[0]]["with_spaces"]+"'", \
-                #     "'"+attribute_type_dict[match_pair[1]]["with_spaces"]+"'\n")
+            else:
+                for mp1_token, mp2_token in zip(mp1_tokens_filtered, mp2_tokens_filtered):
+                    morphed_mp1_token = wordnet.morphy(mp1_token)
+                    morphed_mp2_token = wordnet.morphy(mp2_token)
 
-    # print("** Total confirmed match pairs: ", total_confirmed_match_pairs)
+                    # Morphy returns None if only 1 token and some AttrTypes are only one word
+                    if morphed_mp1_token == None:
+                        morphed_mp1_token = mp1_token
+                    if morphed_mp2_token == None:
+                        morphed_mp2_token = mp2_token
+                    fuzz_score = fuzz.ratio(morphed_mp1_token, morphed_mp2_token)
+                    
+                    if fuzz_score == 100:
+                        fm_score_100_count += 1
+                    else:
+                        non_matching_fuzz_scores.append(fuzz_score)
+
+                # Add to confirmed list if all fuzz_score is 100 for all tokens
+                if fm_score_100_count == len(mp1_tokens_filtered):
+                    confirmed_matches.extend([match_pair])
+                else:
+                    unconfirmed_matches.extend([match_pair])
+  
     return confirmed_matches, unconfirmed_matches
 
 
 @timing
 def check_for_fuzzy_matches_between_confirmed_and_typo_group(*args):
     """
-    Compare attribute_types with typos to those wthout typos
-    and have other confirmed merge pairing.
+    Compare attribute_types with typos to those wthout typos.
     """
-    # known_good_pairs[0] formatted as: ('patients_facet', 'patient_facet', 93)
-    # typos[0] formatted as: bacteroidales_facet
+    # Notes: known_good_pairs[0] formatted as: ('patients, 'patient', 93)
+    # and typos[0] formatted as: bacteroidales
     known_good_pairs = args[0]
     typos = args[1]
-    # print("** LEN-KGP: ", len(known_good_pairs))
-    # print("** TYPOS: ", len(typos))
     
-    # Get list of known merges to compare to
     possible_new_merges = []
     new_merge = ()
-    counter = 0
 
-    for typo_attr_type in typos:
-        typo_attr_type, junk = typo_attr_type.split('_')
-        # print("\nTAT: ", typo_attr_type)
+    # Iterate through both lists to find new matches between typo and no_typo groups
+    for typo_attr_type in tqdm(typos, ascii=True, desc="Checking-matches_good-merge-andtypos", ncols=100):
         for good_pair in known_good_pairs:
-            good_pair1, junk = good_pair[0].split('_')
-            good_pair2, junk = good_pair[1].split('_')
-            # print("Good Pair: ", good_pair1, good_pair2)
+            good_pair1 = good_pair[0]
+            good_pair2 = good_pair[1]
 
-            fuzz_score_gp1 = fuzz.ratio(typo_attr_type, good_pair1)
-            fuzz_score_gp2 = fuzz.ratio(typo_attr_type, good_pair2)
-            # print("** Fuzz Scores: ", fuzz_score_gp1, fuzz_score_gp2)
-
+            fuzz_score_gp1 = fuzz.ratio(typo_attr_type.lower(), good_pair1.lower())
+            fuzz_score_gp2 = fuzz.ratio(typo_attr_type.lower(), good_pair2.lower())
+            
+            # Either filter on number of lemmas or length
             if fuzz_score_gp1 > 90 and fuzz_score_gp2 > 90:
-                counter += 1
-                # print("("+str(counter)+")", "Possible matches between: ", typo_attr_type, \
-                #     " and ", good_pair1, good_pair2)
+                # print("** Fuzz Scores: ", typo_attr_type.lower(), good_pair1.lower(), fuzz_score_gp1)
+                # print("** Fuzz Scores: ", typo_attr_type.lower(), good_pair2.lower(), fuzz_score_gp2)
+
                 new_merge = (good_pair1, good_pair2, typo_attr_type, fuzz_score_gp1, fuzz_score_gp2)
                 possible_new_merges.append(new_merge)
 
-    # print("Possible New Merges: ", len(possible_new_merges))
     return possible_new_merges
 
 
@@ -375,35 +344,41 @@ def check_for_fuzzy_matches_between_unconfirmed_and_typo_group(*args):
     unconfirmed_merge_typo_list = []
     confirmed_merge_typo_list = []
 
-    # Loop through sets of unconfirmed merge pairs to get a single list
-    for merge_pair in unconfirmed_merge_pairs:
+    # Loop through sets of unconfirmed merge pairs to get a 
+    # single list since these pairs are not confirmed merges.
+    for merge_pair in unconfirmed_merge_no_typos:
         # print(merge_pair)
         unconfirmed_list_no_typos.append(merge_pair[0])
         unconfirmed_list_no_typos.append(merge_pair[1])
 
-    # Loop through both lists
-    for x, y in [(x,y) for x in unconfirmed_list_no_typos for y in typos]:
-        # print("** Pairs to check for fuzzy match: ", x, y)
-        x_formatted, junk = x.split('_')
-        y_formatted, junk = y.split('_')
-        
-        fuzz_score = fuzz.ratio(x_formatted.lower(), y_formatted.lower())
-        if fuzz_score > 90:
-            # print("** Possible match betw unconfirmed+typo: ", x_formatted, y_formatted, fuzz_score)
-            match_pair = (x_formatted, y_formatted, fuzz_score)
-            unconfirmed_merge_typo_list.append(match_pair)
-        if fuzz_score == 100:
-            match_pair = (x_formatted, y_formatted, fuzz_score)
-            confirmed_merge_typo_list.append(match_pair)
+    # Loop through both lists of attribute types without typos and with typos
+    # fm_score_100_count = 0
+    for attr1, attr2 in [(attr1, attr2) for attr1 in unconfirmed_list_no_typos for attr2 in typos]:
+        # print("** Pairs to check for fuzzy match: ", attr1, attr2)
 
-    # print("UCL: ", unconfirmed_merge_typo_list)
-    # print("CL: ", confirmed_merge_typo_list)
-    return unconfirmed_merge_typo_list, confirmed_merge_typo_list
+        fuzz_score = fuzz.ratio(attr1.lower(), attr2.lower())
+        if fuzz_score == 100: # Does original attr need to be removed from list, ie attr2? No
+            # fm_score_100_count += 1
+            # NEW ==> Should compare token number after removing stopwords and lemmatization???
+            if len(attribute_type_dict[attr1]["tokens"]) == len(attribute_type_dict[attr2]["tokens"]):
+                print(attr1, attr2, len(attribute_type_dict[attr1]["tokens"]), len(attribute_type_dict[attr2]["tokens"]))
+                match_pair = (attr1, attr2, fuzz_score)
+                confirmed_merge_typo_list.append(match_pair)
+        if fuzz_score > 90 and fuzz_score != 100:
+            # print("** Possible match betw unconfirmed+typo: ", attr1, attr2, fuzz_score)
+            # TODO: Check for all lowercase match and also same number of tokens (after stopwords removed)
+            match_pair = (attr1, attr2, fuzz_score)
+            unconfirmed_merge_typo_list.append(match_pair)
+        
+
+    return confirmed_merge_typo_list, unconfirmed_merge_typo_list
 
 
 if __name__ == '__main__':
     """ 
-    Typo analysis pipeline.... and find possible lexical attr_type merges.
+    Lexical analysis pipeline to find attribute type merges 
+    based on lexical similarity between attributes using fuzzy
+    matching and NLTK methods.
     """
     print("Analyzing attribute types...")
 
@@ -435,13 +410,12 @@ if __name__ == '__main__':
     more_merges_to_confirmed = check_for_fuzzy_matches_between_confirmed_and_typo_group(confirmed_merge_pairs, at_typos)
     print("** More possible merges between no typos(confirmed merge group) and typos group: ", len(more_merges_to_confirmed), "\n")
 
-    # Check for matches between attribute types in unconfirmed_merge_pairs set 
+    # Check for matches between attribute types in unconfirmed_merge_pairs set(from no_typos) 
     # and those in the set with typos
-    more_unconf_merges_between_unconfirmednotypos_and_typos, more_conf_merges_between_unconfirmed_and_typos = check_for_fuzzy_matches_between_unconfirmed_and_typo_group(unconfirmed_merge_pairs, at_typos)
-    print("** More possible merges between no typo(unconfirmed) and typos group: ", len(more_unconf_merges_between_unconfirmednotypos_and_typos))
+    more_conf_merges_between_unconfirmed_and_typos, more_unconf_merges_between_unconfirmednotypos_and_typos = check_for_fuzzy_matches_between_unconfirmed_and_typo_group(unconfirmed_merge_pairs, at_typos)
     print("** More _confirmed_ merges with no typo merge set: ", len(more_conf_merges_between_unconfirmed_and_typos), "\n")
-
-
+    print("** More possible merges between no typo(unconfirmed) and typos group: ", len(more_unconf_merges_between_unconfirmednotypos_and_typos))
+    
     # Check for fuzzy matches amongst typos list
     typos_all_matches = check_for_fuzzy_matches(at_typos)
     typos_confirmed_merge_pairs, typos_unconfirmed_merge_pairs = secondary_fuzzy_match_check(typos_all_matches)
@@ -454,6 +428,7 @@ if __name__ == '__main__':
     # Confirmed merges
     with open("merge_confirmed_"+TIMESTAMP+".csv", "w") as confirmed_merge_no_typos_out:
         csvout = csv.writer(confirmed_merge_no_typos_out)
+
         for merge_pair in confirmed_merge_pairs:
             csvout.writerow([merge_pair[0], merge_pair[1], "no_typos"])
         
@@ -478,5 +453,5 @@ if __name__ == '__main__':
             csvout.writerow([mumbuat[0], mumbuat[1], "typo_no_typo"])
 
         for tump in typos_unconfirmed_merge_pairs:
-            csvout.writerow([tump[0], tump[1], "typos"])
+            csvout.writerow([tump[0], tump[1], "all_typos"])
 
