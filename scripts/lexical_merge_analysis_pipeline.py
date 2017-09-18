@@ -107,61 +107,6 @@ def read_attr_type_file():
     return attribute_type_dict
 
 
-# NOT CURRENTLY USED
-def read_no_typos_attr_type():
-    """
-    Read file of known list of attribute types with typos.
-    """
-    with open(args.no_typo_attr_type_file_path, 'r') as f:
-        content = f.readlines()
-        print(content)
-    return content
-
-
-# NOT CURRENTLY USED
-def check_for_matches(attr_dict):
-    """
-    Check for overall matches between attribute type due to case and space differences
-    """
-    TIMESTAMP = get_timestamp()
-    filename = "overall_matches_"+TIMESTAMP+".csv"
-    save_directory_path = "/Users/twhetzel/git/biosamples-data-mining/data_results"
-    data_directory = "NoTypoAttrType"
-    completeName = os.path.join(save_directory_path, data_directory, filename)
-
-    outfile = open(completeName, "w")
-    csvout = csv.writer(outfile)
-    csvout.writerow(["Attr1", "Attr1_Usage", "Attr2", "Attr2_Usage"])
-    
-    original_attr_type_list = attr_dict.keys()
-    copy_original_attr_type_list = original_attr_type_list[:]
-    # print(original_attr_type_list)
-    counter = 0
-
-    formatted_attr_type_list = []
-    matches_list = []
-
-    for attr_type in original_attr_type_list:
-        # remove spaces and lowercase
-        formatted_attr_type = attr_type.lower()
-        formatted_attr_type = formatted_attr_type.replace(" ", "")
-        # print(formatted_attr_type)
-        formatted_attr_type_list.append(formatted_attr_type)
-
-
-    for attr1 in original_attr_type_list:
-        # print("** Attr1:", attr1, attr1.lower().replace(" ",""))
-        # original_attr_type_list.remove(attr1)
-        for attr2 in copy_original_attr_type_list:
-            # find matches where lowercase match, but original casing does not match
-            if attr1.lower() == attr2.lower() and attr1 != attr2:
-                counter += 1
-                original_attr_type_list.remove(attr2)
-                print(counter, "MATCHES: ", attr1, attr_dict[attr1], attr2, attr_dict[attr2])
-                csvout.writerow([attr1, attr_dict[attr1], attr2, attr_dict[attr2]])
-    outfile.close()
-
-
 @timing
 def check_for_typos(at_token_dict):
     """
