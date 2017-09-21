@@ -202,7 +202,7 @@ def secondary_fuzzy_match_check(matches):
 
     # Customize stopword list
     stopWords = set(stopwords.words('english'))
-    words_to_remove = ['m', 's', 'before', 'after', 'at', 'during', 'no']
+    words_to_remove = ['m', 's', 't', 'd', 'before', 'after', 'at', 'during', 'no', 'he']
     for word in words_to_remove:
         stopWords.remove(word)
 
@@ -221,6 +221,9 @@ def secondary_fuzzy_match_check(matches):
             # Check Fuzzy match score on individual tokens with stopwords/tokens removed
             fm_score_100_count = 0
             non_matching_fuzz_scores = []
+            # TODO: Add check that if joined, filtered, lowercase tokens are a 100 fuzzy match, then add to confirmed
+
+
             if len(mp1_tokens_filtered) != len(mp2_tokens_filtered):
                 unconfirmed_matches.extend([match_pair])
             else:
