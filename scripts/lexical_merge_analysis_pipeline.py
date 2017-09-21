@@ -202,7 +202,9 @@ def secondary_fuzzy_match_check(matches):
 
     # Customize stopword list
     stopWords = set(stopwords.words('english'))
-    stopWords.remove('m')
+    words_to_remove = ['m', 's', 'before', 'after', 'at', 'during', 'no']
+    for word in words_to_remove:
+        stopWords.remove(word)
 
     for match_pair in matches:
         mp1_tokens = attribute_type_dict[match_pair[0]]["tokens"]
@@ -350,10 +352,10 @@ if __name__ == '__main__':
     print("** No typos:", len(no_typos), "Typos:", len(at_typos))
 
     # Check for fuzzy matches amongst attr_types with no typos
-    # no_typos_all_matches = check_for_fuzzy_matches(no_typos)
+    # no_typos_all_matches = check_for_fuzzy_matches(no_typos). # not optimized with multiprocessing
     pool = Pool(5)
     no_typos_all_matches = pool.map(check_for_fuzzy_matches, [no_typos])
-    print("** NTAM: ", no_typos_all_matches[0])
+    # print("** NTAM: ", no_typos_all_matches[0])
 
     # confirmed_merge_pairs, unconfirmed_merge_pairs = secondary_fuzzy_match_check(no_typos_all_matches[0])
     results = pool.map(secondary_fuzzy_match_check, no_typos_all_matches)
