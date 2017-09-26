@@ -29,7 +29,7 @@ def build_matrix(facets):
 	unique_facets = []
 	unique_samples = []
 
-	print('Generating dictionary...')
+	print('Generating dictionary for:', facets)
 	with open("all.csv",'r') as f_in:
 
 
@@ -46,7 +46,7 @@ def build_matrix(facets):
 				if sample_id not in unique_samples:
 					unique_samples.append(sample_id)
 	print('Found', len(unique_samples), 'unique samples sharing', len(unique_facets), 'attributes.')
-	print('Generating DataFrame...')
+	print('Generating', len(unique_samples), 'x', len(unique_facets), 'DataFrame...')
 	df = pd.DataFrame(index=unique_samples, columns=unique_facets)
 
 	printcounter = 0
@@ -70,7 +70,7 @@ def build_matrix(facets):
 def affinity_cluster(X):
 	# NB X is a np matrix built in 'build_matrix'
 
-	print('Began clustering...')
+	print('Doing Affinity Propagation...')
 	af = AffinityPropagation().fit(X)
 	# af = AffinityPropagation(preference=0.000000001).fit(X)
 	cluster_centers_indices = af.cluster_centers_indices_
@@ -106,15 +106,21 @@ def affinity_histo(df, affinity_clus_result):
 	plt.show()
 
 def hierarchical_cluster(X):
+	print('Doing Hierarchical Clustering...')
 
-	Z = linkage(X, 'ward')
-	coph, coph_dists = cophenet(Z, pdist(X))
-	# if coph < 0.9:
-	# 	print('WARNING: cophenetic correlation distance is', coph)
+	best_params = best_linkage(X)
+	best_method = best_params[0]
+	best_metric = best_params[1]
+	coph = best_params[2]
 
-	best_linkage(X)
+	Z = linkage(X, best_method, best_metric)
+	print('NB: best cophenetic correlation distance is', coph)
+
+
 
 def best_linkage(X):
+
+	# Tests multiple options for linkage for the 
 
 	method_options = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
 	metric_options = ['euclidean', 'cityblock', 'hamming', 'cosine']
@@ -124,17 +130,27 @@ def best_linkage(X):
 	for u in method_options:
 		Z = linkage(X, u)
 		coph, coph_dists = cophenet(Z, pdist(X))
-		print('Method:', u, '\t\tgave cophenetic correlation distance', coph)
+		# print('Method:', u, 'gave cophenetic correlation distance', coph)
 		if coph > best_method_score:
 			best_method_score = coph
 			best_method = u
-	print('Best method is', best_method, 'with a score of', best_method_score)
+	# print('Best method is', best_method)
 
+	best_metric_score = 0
+	best_metric = ''
 	if best_method is not 'ward':
-		for
+		for q in metric_options:
+			Z = linkage(X, best_method, q)
+			coph, coph_dists = cophenet(Z, pdist(X))
+			# print('Within', best_method, ',', q, 'gave score', coph)
+			if coph > best_metric_score:
+				best_metric_score = coph
+				best_metric = q
 
+	print('Best linkage method is', best_method, 'using metric', best_metric)
+	print('Score:', best_metric_score)
 
-
+	return (best_method, best_metric, best_metric_score)
 
 
 if __name__ == '__main__':
