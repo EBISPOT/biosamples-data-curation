@@ -14,14 +14,16 @@ affinity_histo:
 plots affinity propagation clusters as sorted histogram
 
 '''
-
+import corex as ce
 import numpy as np
 import pandas as pd
 import sys, csv, sklearn
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 from scipy.spatial.distance import pdist
 from sklearn.cluster import AffinityPropagation
 from scipy.cluster.hierarchy import dendrogram, linkage, cophenet
+
 
 def build_matrix(facets):
 
@@ -114,8 +116,16 @@ def hierarchical_cluster(X):
 	coph = best_params[2]
 
 	Z = linkage(X, best_method, best_metric)
-	print('NB: best cophenetic correlation distance is', coph)
+	print('N.B. There are', len(X), 'samples. Merges >', len(X), 'are cluster merges.')
+	# print(Z[20:])
+	print(type(X))
 
+
+	# # idxs = [33, 68, 62]
+	# plt.figure(figsize=(10, 8))
+	# plt.scatter(X[:,0], X[:,1])  # plot all points
+	# # plt.scatter(X[idxs,0], X[idxs,1], c='r')  # plot interesting points in red again
+	# plt.show()
 
 
 def best_linkage(X):
@@ -152,6 +162,17 @@ def best_linkage(X):
 
 	return (best_method, best_metric, best_metric_score)
 
+def pca_analysis(X):
+	pca = PCA(n_components=2)
+	# pca.fit(X)
+	Y_pca = pca.fit_transform(X)
+
+	plt.scatter(Y_pca[:,0],Y_pca[:,1])
+	plt.show()
+
+	# print(pca.explained_variance_ratio_)  
+ 
+
 
 if __name__ == '__main__':
 
@@ -166,9 +187,13 @@ if __name__ == '__main__':
 	# affinity_histo(df, affinity_clus_result)
 
 
-	# Hierarchical Clustering
-	hierarchical_cluster(X)
-	# This is a test 1
+	# # Hierarchical Clustering
+	# hierarchical_cluster(X)
+
+
+	# Principal Component Analysis
+	# pca_analysis(X)
+
 
 
 
