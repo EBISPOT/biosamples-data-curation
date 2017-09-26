@@ -61,11 +61,10 @@ def get_facet_values(attr_type):
     """
     TIMESTAMP = get_timestamp()
 
-    filename = "facet_value_results_"+TIMESTAMP+".csv"
-    save_directory_path = "../master-data"
-    completeName = os.path.join(save_directory_path, filename)
-
-    outfile = open(completeName, "w")
+    # filename = "facet_value_results_"+TIMESTAMP+".csv"
+    # save_directory_path = "../master-data"
+    # completeName = os.path.join(save_directory_path, filename)
+    # outfile = open(completeName, "w")
 
     all_attribute_types = attribute_type_dict.keys()
     attr_type_count = 0
@@ -77,22 +76,33 @@ def get_facet_values(attr_type):
         start += 1
 
         if attr_type_count <= int(args.num_attr_review):
-            # print "\n** Attribute Type("+ str(attr_type_count) +"): ", attr_type, attribute_type_dict[attr_type]
+            print "\n** Attribute Type("+ str(attr_type_count) +"): ", attr_type, attribute_type_dict[attr_type]
             
             search_facets = []
             if start % 5 == 0:
                 end = start + 5
-                print(all_attribute_types[start:end])
+                # print "** Facet slice: ", all_attribute_types[start:end], start, end
                 # Search Solr with 5 attribute types
                 search_facets = all_attribute_types[start:end]
 
                 values = _get_attr_values(search_facets)
                 # print type(values), values
                 all_facet_results.update(values)
+                
+                # Print facet search results to files
+                for key, values in all_facet_results.iteritems():
+                    results = {}
+                    filename = key+"_results_"+TIMESTAMP+".json"
+                    save_directory_path = "../master-data/facet_values"
+                    completeName = os.path.join(save_directory_path, filename)
+                    results[key] = values
+
+                    outfile = open(completeName, "w")
+                    json.dump(results, outfile)
     
     # write ols search results for attr_trype to file
-    print "** All Results: ", all_facet_results
-    json.dump(all_facet_results, outfile)
+    # print "** All Results: ", len(all_facet_results)
+    # json.dump(all_facet_results, outfile)
     outfile.close()
 
 
@@ -100,7 +110,7 @@ def _get_attr_values(facets):
     """
     Use Solr web service calls to get all values and usage count.
     """
-    print("** Facets: " ,facets)
+    # print "** Facets: " , facets
     facet1 = urllib.quote(facets[0])
     facet2 = urllib.quote(facets[1])
     facet3 = urllib.quote(facets[2])
@@ -110,7 +120,7 @@ def _get_attr_values(facets):
 
     # facet = urllib.quote(facet)
 
-    # SOLR_COCOA_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
+    # SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
     #             "q=*%3A*&rows=0&wt=json&indent=true&facet=true&" \
     #             "facet.field={facet:s}".format(facet=facet)
     
@@ -120,7 +130,7 @@ def _get_attr_values(facets):
     }
 
     # NEW SOLR URL FORMAT
-    NEW_SOLR_COCOA_URL = "http://cocoa.ebi.ac.uk:8989/solr/merged/select?" \
+    NEW_SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/merged/select?" \
                 "q=*%3A*&rows=0&wt=json&indent=true&facet=true&" \
                 "facet.field={facet1}&facet.field={facet2}&" \
                 "facet.field={facet3}&facet.field={facet4}&" \
@@ -129,13 +139,13 @@ def _get_attr_values(facets):
                     facet3=facet3, facet4=facet4, facet5=facet5)
 
 
-    print "Sending request...", NEW_SOLR_COCOA_URL
+    # print "Sending request...", NEW_SOLR_URL
 
     t.sleep(0.2)
 
     facet_results = {}
     try:
-        response = requests.get(NEW_SOLR_COCOA_URL, headers=headers)
+        response = requests.get(NEW_SOLR_URL, headers=headers)
         if response.status_code == 200:
             results = json.loads(response.content)
             # print results
@@ -163,6 +173,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-curation/master-data/cocoa_facets.csv")
     parser.add_argument('--num_attr_review', default=26610, help="Number of Attributes to search Biosample Solr.")
+    # parser.add_argument('--restart_attr_count', default=0, help="Count of attribute types to restart Solr queries.")
     args = parser.parse_args()
 
     # Read in file of attribute types
