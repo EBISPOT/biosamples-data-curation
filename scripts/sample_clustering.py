@@ -14,7 +14,8 @@ affinity_histo:
 plots affinity propagation clusters as sorted histogram
 
 '''
-import corex as ce
+import mca
+import prince
 import numpy as np
 import pandas as pd
 import sys, csv, sklearn
@@ -67,7 +68,7 @@ def build_matrix(facets):
 	print('Generating matrix...')
 	X = df.as_matrix()
 	print('Matrix generated')
-	return (df, X)
+	return (X, unique_facets, unique_samples)
 
 def affinity_cluster(X):
 	# NB X is a np matrix built in 'build_matrix'
@@ -108,6 +109,9 @@ def affinity_histo(df, affinity_clus_result):
 	plt.show()
 
 def hierarchical_cluster(X):
+
+	# needs a rewrite to run off the back of mca
+
 	print('Doing Hierarchical Clustering...')
 
 	best_params = best_linkage(X)
@@ -126,7 +130,6 @@ def hierarchical_cluster(X):
 	# plt.scatter(X[:,0], X[:,1])  # plot all points
 	# # plt.scatter(X[idxs,0], X[idxs,1], c='r')  # plot interesting points in red again
 	# plt.show()
-
 
 def best_linkage(X):
 
@@ -163,6 +166,10 @@ def best_linkage(X):
 	return (best_method, best_metric, best_metric_score)
 
 def pca_analysis(X):
+
+	# may not be fully appropreate for a binary catagorical matrix as I have
+	# mca is better
+
 	pca = PCA(n_components=2)
 	# pca.fit(X)
 	Y_pca = pca.fit_transform(X)
@@ -170,16 +177,41 @@ def pca_analysis(X):
 	plt.scatter(Y_pca[:,0],Y_pca[:,1])
 	plt.show()
 
-	# print(pca.explained_variance_ratio_)  
- 
+	# print(pca.explained_variance_ratio_)
 
+def prince_multiple_correspondence_analysis(X, unique_facets, unique_samples):
+
+	'''
+	not working at the moment due to IndexingError: Too many indexers. I tried
+	their sample code on github and got the same error. Some prople have posed
+	the same issue and their bugs have been fixed. Hoping they fix this ASAP
+
+	'''
+
+
+	# df = pd.DataFrame(data=X, dtype = 'bool', index = unique_samples, columns = unique_facets)
+	df = pd.DataFrame(data=X, columns = unique_facets)
+
+	mca = prince.MCA(df, n_components=2)
+
+	mca.plot_rows_columns()
+
+	# mca.plot_rows(show_points=True, show_labels=False, ellipse_fill=True)
+
+def multiple_correspondence_analysis(X, unique_facets, unique_samples):
+
+	df = pd.DataFrame(data=X, columns = unique_facets)
+	mca_df = mca.MCA(df)
+	
 
 if __name__ == '__main__':
 
 	facets = 'frozenDesertFrequency'
-	matrixA = build_matrix(facets)
-	X = matrixA[1]
-	df = matrixA[0]
+	data_build = build_matrix(facets)
+	X = data_build[0]
+	unique_facets = data_build[1]
+	unique_samples = data_build[2]
+
 
 	# # Affinity Propagation Clustering
 
@@ -193,6 +225,8 @@ if __name__ == '__main__':
 
 	# Principal Component Analysis
 	# pca_analysis(X)
+	multiple_correspondence_analysis(X, unique_facets, unique_samples)
+
 
 
 
