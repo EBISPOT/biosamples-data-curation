@@ -13,6 +13,7 @@ pip install nltk  # note other modules needed
 pip install matplotlib
 pip install networkx
 
+pip install tqdm
 
 
 
