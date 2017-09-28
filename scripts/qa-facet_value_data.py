@@ -9,15 +9,24 @@ def get_attr_type_value_file_names():
     Get list of all filenames to examine.
     """
     all_value_file_names = []
+    modified_all_value_file_names = []
     cwd = os.getcwd()
     # Change to dir with result files to analyze
     os.chdir(args.attr_values_dir)
     
     for filename in glob.glob("*.json"):
         all_value_file_names.append(filename)
+
+    # Modfiy file names to match attribute facet name format, e.g. barcode_facet
+    for facet in all_value_file_names:
+        facet, junk = facet.split("_results")
+        # print "Modified: ", facet
+        modified_all_value_file_names.append(facet)
+
     # Return to current working directory
     os.chdir(cwd)
-    return all_value_file_names
+    # return all_value_file_names
+    return modified_all_value_file_names
 
 
 def read_attr_type_file():
@@ -37,7 +46,6 @@ def read_attr_type_file():
         if attr_type != '':
             attribute_type_dict[attr_type.strip()] = value.strip()
     
-    # print(len(attribute_type_dict.keys()))
     return attribute_type_dict
 
 
@@ -55,9 +63,7 @@ def find_missing_facet_value_results(file_list, attr_type_data):
     outfile = open(completeName, "w")
     
     for attr_type in tqdm(attribute_types, ncols=120):
-        attr_type = attr_type+"_results.json"
         if attr_type not in file_list:
-            attr_type, junk = attr_type.split('_results.json')
             # Print missing to file
             csvout = csv.writer(outfile)
             csvout.writerow([attr_type, 0])
@@ -70,14 +76,8 @@ if __name__ == '__main__':
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-curation/master-data/cocoa_facets.csv")
-    parser.add_argument('--attr_values_dir', default="/Users/twhetzel/git/biosamples-data-curation/master-data/facet_values")
-    # parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-mining/data_results/unique_attr_types_2017-06-20_14-31-00.csv")
-    # parser.add_argument('--search_content', default="attr_type", help="Indicates what content to search. \
-    #                                         Possible values are attr_type, values, both.")
-    # parser.add_argument('--num_attr_review', default=16000, help="Number of Attributes to search OLS.")
-    # parser.add_argument('--restart_attr_count', default=0, help="Count of which attribute to re-start OLS search \
-                                            # when values are used for search.")
+    parser.add_argument('--attr_type_file_path', default="/vagrant/biosamples-data-curation/master-data/cocoa_facets.csv")
+    parser.add_argument('--attr_values_dir', default="/vagrant/biosamples-data-curation/master-data/facet_values")
     args = parser.parse_args()
 
     # Get list of files with attribute value results
