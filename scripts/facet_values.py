@@ -10,14 +10,6 @@ import time as t
 
 
 
-def get_timestamp():
-    """ 
-    Get timestamp of current date and time. 
-    """
-    timestamp = '{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
-    return timestamp
-
-
 def timing(f):
     """
     Create wrapper to report time of functions.
@@ -59,18 +51,10 @@ def get_facet_values(attr_type):
     """
     Get all facet/attribute type values and their usage count from Solr.
     """
-    TIMESTAMP = get_timestamp()
-
-    # filename = "facet_value_results_"+TIMESTAMP+".csv"
-    # save_directory_path = "../master-data"
-    # completeName = os.path.join(save_directory_path, filename)
-    # outfile = open(completeName, "w")
 
     all_attribute_types = attribute_type_dict.keys()
     attr_type_count = -1
-    # start = int(args.restart_attr_count) - 1
     start = -1
-    # print "Start before auto-increment: ", start
 
     all_facet_results = {}
     for attr_type in all_attribute_types:
@@ -82,9 +66,7 @@ def get_facet_values(attr_type):
             # print "\n** Attribute Type("+ str(attr_type_count) +"): ", attr_type, attribute_type_dict[attr_type]
             
             search_facets = []
-            # restart_count = int(args.restart_attr_count)
-            # print "Start: ", start, start - int(args.restart_attr_count)
-            # start = start - int(args.restart_attr_count)
+
             if start % 5 == 0:
                 end = start + 5
                 print "** Facet slice: ", all_attribute_types[start:end], start, end
@@ -99,7 +81,7 @@ def get_facet_values(attr_type):
                 for key, values in all_facet_results.iteritems():
                     results = {}
                     filename = key+"_results.json"
-                    save_directory_path = "../master-data/facet_values/"
+                    save_directory_path = "../master-data/facet_values/more/"
                     completeName = os.path.join(save_directory_path, filename)
                     results[key] = values
                     # print results
@@ -125,8 +107,6 @@ def _get_attr_values(facets):
     facet5 = urllib.quote(facets[4])
 
 
-    # facet = urllib.quote(facet)
-
     # SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
     #             "q=*%3A*&rows=0&wt=json&indent=true&facet=true&" \
     #             "facet.field={facet:s}".format(facet=facet)
@@ -145,9 +125,6 @@ def _get_attr_values(facets):
                 "facet.limit=-1".format(facet1=facet1, facet2=facet2, \
                     facet3=facet3, facet4=facet4, facet5=facet5)
 
-
-    # print "Sending request...", NEW_SOLR_URL
-
     t.sleep(0.2)
 
     facet_results = {}
@@ -155,13 +132,8 @@ def _get_attr_values(facets):
         response = requests.get(NEW_SOLR_URL, headers=headers)
         if response.status_code == 200:
             results = json.loads(response.content)
-            # print results
             if results:
-                # values = results["facet_counts"]["facet_fields"][facet]
                 values = results["facet_counts"]["facet_fields"]
-                # print values
-                # facet_results[facet] = values
-                # return facet_results
                 return values
         else:
             print response.status_code
@@ -170,15 +142,12 @@ def _get_attr_values(facets):
         print e
 
 
-
-
-
 if __name__ == '__main__':
     print "Getting facet values from Solr..."
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-curation/master-data/cocoa_facets.csv")
+    parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-curation/master-data/missing_attribute_type_values.csv")
     parser.add_argument('--num_attr_review', default=26610, help="Number of Attributes to search Biosample Solr.")
     parser.add_argument('--restart_attr_count', default=0, help="Count of attribute types to restart Solr queries.")
     args = parser.parse_args()
