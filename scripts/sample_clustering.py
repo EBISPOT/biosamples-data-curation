@@ -14,8 +14,12 @@ affinity_histo:
 plots affinity propagation clusters as sorted histogram
 
 '''
-import mca
-import prince
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+from rpy2.robjects import pandas2ri, r
+
+
+
 import numpy as np
 import pandas as pd
 import sys, csv, sklearn
@@ -24,6 +28,7 @@ from sklearn.decomposition import PCA
 from scipy.spatial.distance import pdist
 from sklearn.cluster import AffinityPropagation
 from scipy.cluster.hierarchy import dendrogram, linkage, cophenet
+
 
 
 def build_matrix(facets):
@@ -179,30 +184,53 @@ def pca_analysis(X):
 
 	# print(pca.explained_variance_ratio_)
 
-def prince_multiple_correspondence_analysis(X, unique_facets, unique_samples):
+def to_R(X, unique_facets, unique_samples):
 
-	'''
-	not working at the moment due to IndexingError: Too many indexers. I tried
-	their sample code on github and got the same error. Some prople have posed
-	the same issue and their bugs have been fixed. Hoping they fix this ASAP
+	# df = pd.DataFrame(data = X)
+	df = pd.DataFrame(data = X)
 
-	'''
-
-
-	# df = pd.DataFrame(data=X, dtype = 'bool', index = unique_samples, columns = unique_facets)
-	df = pd.DataFrame(data=X, columns = unique_facets)
-
-	mca = prince.MCA(df, n_components=2)
-
-	mca.plot_rows_columns()
-
-	# mca.plot_rows(show_points=True, show_labels=False, ellipse_fill=True)
-
-def multiple_correspondence_analysis(X, unique_facets, unique_samples):
-
-	df = pd.DataFrame(data=X, columns = unique_facets)
-	mca_df = mca.MCA(df)
+	# pandas2ri.activate()
+	r_dataframe = pandas2ri.py2ri(df)
 	
+
+
+	MASS=importr('MASS')
+	result = MASS.mca(r_dataframe, nf = 2, abbrev = False)
+
+	# FactoMineR=importr('FactoMineR')
+	# result = FactoMineR.MCA(r_dataframe, nf = 2, abbrev = False)
+	
+
+	print(type(result))
+	sys.exit()
+
+
+
+
+
+
+	# dudi.acm=robjects.r('dudi.acm')
+	# ade4=importr('ade4')
+
+	# mjca=robjects.r('mjca')
+	# ca=importr('ca')
+
+	# homals_=robjects.r('homals')
+	# homals=importr('homals')
+
+	# Calling R
+
+	# rdata=mca(df, nf = 2, abbrev = FALSE)
+	print(rdata)
+
+
+
+
+	# fit=forecast.auto_arima(rdata)
+	# forecast_output=forecast.forecast(fit,h=16,level=(95.0))
+
+
+
 
 if __name__ == '__main__':
 
@@ -223,9 +251,12 @@ if __name__ == '__main__':
 	# hierarchical_cluster(X)
 
 
-	# Principal Component Analysis
-	# pca_analysis(X)
-	multiple_correspondence_analysis(X, unique_facets, unique_samples)
+	# Principal Component Analysis / Multiple Correspondence Analysis
+
+	to_R(X, unique_facets, unique_samples)
+
+
+
 
 
 
