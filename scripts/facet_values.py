@@ -7,6 +7,9 @@ import csv
 import urllib
 import os
 import time as t
+import glob, os
+from collections import Counter
+import string, random
 
 
 
@@ -42,24 +45,46 @@ def read_attr_type_file():
         if attr_type != '':
             attribute_type_dict[attr_type.strip()] = value.strip()
     
-    print(len(attribute_type_dict.keys()))
+    print "- Number of Facets: ", len(attribute_type_dict.keys())
     return attribute_type_dict
 
 
+def test_for_duplicate_filenames(data):
+    """
+    Examine dups in attribute types that are case insensitive.
+    """
+    all_attribute_types = []
+    case_sensitive_dups = []
+    case_sensitive_dups_frequency = {}
+
+    for k,v in data.iteritems():
+        all_attribute_types.append(k.lower())
+
+    attr_list_count = Counter(all_attribute_types).most_common()
+
+    
+    for attr, frequency in attr_list_count:
+        case_sensitive_dups_frequency[attr] = frequency
+        case_sensitive_dups.append(attr)
+
+    print "- Number of Unique Lowercased Facets: ", len(case_sensitive_dups)
+
+    return case_sensitive_dups, case_sensitive_dups_frequency
+
+
 @timing
-def get_facet_values(attr_type):
+def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
     """
     Get all facet/attribute type values and their usage count from Solr.
     """
 
-    all_attribute_types = attribute_type_dict.keys()
+    all_attribute_types = attr_type.keys()
     attr_type_count = -1
-    start = -1
+    save_directory_path = "../master-data/facet_values/"
 
-    all_facet_results = {}
     for attr_type in all_attribute_types:
         attr_type_count += 1
-        start += 1
+        start = attr_type_count
 
         num_attr_review = int(args.num_attr_review) + int(args.restart_attr_count)
         if attr_type_count >= int(args.restart_attr_count) and attr_type_count <= num_attr_review:
@@ -69,37 +94,33 @@ def get_facet_values(attr_type):
 
             if start % 5 == 0:
                 end = start + 5
-                print "** Facet slice: ", all_attribute_types[start:end], start, end
-                # Search Solr with 5 attribute types
+                print "\n** Facet slice: ", all_attribute_types[start:end], start, end
+                # Slice list to search Solr with 5 attribute types
                 search_facets = all_attribute_types[start:end]
 
-                values = _get_attr_values(search_facets)
-                # print type(values), values
-                all_facet_results.update(values)
+                result_values = _get_attr_values(search_facets)
                 
                 # Print facet search results to files
-                for key, values in all_facet_results.iteritems():
-                    results = {}
-                    filename = key+"_results.json"
-                    save_directory_path = "../master-data/facet_values/more/"
-                    completeName = os.path.join(save_directory_path, filename)
-                    results[key] = values
-                    # print results
+                for key, values in result_values.iteritems():
+                    individual_facet_results = {}
 
+                    # Create unique tag since some facet names are repeated and 
+                    # some file systems can only have unique case insensitive filenames
+                    UNIQUE_TAG = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(8))
+
+                    filename = key+"_results-"+UNIQUE_TAG+".json"
+                    print "** Filename: ", filename
+                    completeName = os.path.join(save_directory_path, filename)
                     outfile = open(completeName, "w")
-                    json.dump(results, outfile)
-    
-    # write ols search results for attr_trype to file
-    # print "** All Results: ", len(all_facet_results)
-    # json.dump(all_facet_results, outfile)
-    # outfile.close()
+
+                    individual_facet_results[key] = values
+                    json.dump(individual_facet_results, outfile)
 
 
 def _get_attr_values(facets):
     """
     Use Solr web service calls to get all values and usage count.
     """
-    # print "** Facets: " , facets
     facet1 = urllib.quote(facets[0])
     facet2 = urllib.quote(facets[1])
     facet3 = urllib.quote(facets[2])
@@ -139,7 +160,7 @@ def _get_attr_values(facets):
             print response.status_code
 
     except requests.exceptions.RequestException as e:
-        print e
+        print "Failed with error: ", e
 
 
 if __name__ == '__main__':
@@ -147,15 +168,20 @@ if __name__ == '__main__':
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--attr_type_file_path', default="/Users/twhetzel/git/biosamples-data-curation/master-data/missing_attribute_type_values.csv")
+    parser.add_argument('--attr_type_file_path', default="../master-data/cocoa_facets.csv")
+    parser.add_argument('--attr_values_dir', default="../master-data/facet_values")
     parser.add_argument('--num_attr_review', default=26610, help="Number of Attributes to search Biosample Solr.")
     parser.add_argument('--restart_attr_count', default=0, help="Count of attribute types to restart Solr queries.")
     args = parser.parse_args()
 
+
     # Read in file of attribute types
     attribute_type_dict = read_attr_type_file()
 
+    # Test for attribute types that are case sensitive duplicates
+    dups, dups_frequency = test_for_duplicate_filenames(attribute_type_dict)
+
     # Get values 
-    get_facet_values(attribute_type_dict)
+    get_facet_values(attribute_type_dict, dups, dups_frequency)
 
 
