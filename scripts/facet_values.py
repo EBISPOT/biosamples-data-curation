@@ -99,6 +99,7 @@ def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
                 search_facets = all_attribute_types[start:end]
 
                 result_values = _get_attr_values(search_facets)
+                # print "** Returned Result-Values: ", result_values
                 
                 # Print facet search results to files
                 for key, values in result_values.iteritems():
@@ -109,7 +110,7 @@ def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
                     UNIQUE_TAG = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(8))
 
                     filename = key+"_results-"+UNIQUE_TAG+".json"
-                    print "** Filename: ", filename
+                    # print "** Filename: ", filename
                     completeName = os.path.join(save_directory_path, filename)
                     outfile = open(completeName, "w")
 
@@ -121,11 +122,11 @@ def _get_attr_values(facets):
     """
     Use Solr web service calls to get all values and usage count.
     """
-    facet1 = urllib.quote(facets[0])
-    facet2 = urllib.quote(facets[1])
-    facet3 = urllib.quote(facets[2])
-    facet4 = urllib.quote(facets[3])
-    facet5 = urllib.quote(facets[4])
+    facet0 = urllib.quote(facets[0])
+    facet1 = urllib.quote(facets[1])
+    facet2 = urllib.quote(facets[2])
+    facet3 = urllib.quote(facets[3])
+    facet4 = urllib.quote(facets[4])
 
 
     # SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
@@ -140,15 +141,16 @@ def _get_attr_values(facets):
     # NEW SOLR URL FORMAT
     NEW_SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/merged/select?" \
                 "q=*%3A*&rows=0&wt=json&indent=true&facet=true&" \
-                "facet.field={facet1}&facet.field={facet2}&" \
-                "facet.field={facet3}&facet.field={facet4}&" \
-                "facet.field={facet5}&facet.mincount=0&" \
-                "facet.limit=-1".format(facet1=facet1, facet2=facet2, \
-                    facet3=facet3, facet4=facet4, facet5=facet5)
+                "facet.field={facet0}&facet.field={facet1}&" \
+                "facet.field={facet2}&facet.field={facet3}&" \
+                "facet.field={facet4}&facet.mincount=0&" \
+                "facet.limit=-1".format(facet0=facet0, facet1=facet1, \
+                    facet2=facet2, facet3=facet3, facet4=facet4)
 
     t.sleep(0.2)
 
     facet_results = {}
+    dummy_results = {}
     try:
         response = requests.get(NEW_SOLR_URL, headers=headers)
         if response.status_code == 200:
@@ -157,10 +159,18 @@ def _get_attr_values(facets):
                 values = results["facet_counts"]["facet_fields"]
                 return values
         else:
-            print response.status_code
+            print "** Failed with error: ", response.status_code
+            
+            dummy_results[facet0] = ["500 error", 0]
+            dummy_results[facet1] = ["500 error", 0]
+            dummy_results[facet2] = ["500 error", 0]
+            dummy_results[facet3] = ["500 error", 0]
+            dummy_results[facet4] = ["500 error", 0]
+            
+            return dummy_results
 
     except requests.exceptions.RequestException as e:
-        print "Failed with error: ", e
+        print e
 
 
 if __name__ == '__main__':
