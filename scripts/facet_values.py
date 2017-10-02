@@ -73,7 +73,8 @@ def test_for_duplicate_filenames(data):
 
 
 @timing
-def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
+# def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
+def get_facet_values(attr_type):
     """
     Get all facet/attribute type values and their usage count from Solr.
     """
@@ -99,34 +100,54 @@ def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
                 search_facets = all_attribute_types[start:end]
 
                 result_values = _get_attr_values(search_facets)
-                # print "** Returned Result-Values: ", result_values
                 
                 # Print facet search results to files
                 for key, values in result_values.iteritems():
                     individual_facet_results = {}
 
-                    # Create unique tag since some facet names are repeated and 
-                    # some file systems can only have unique case insensitive filenames
-                    UNIQUE_TAG = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(8))
+                    # Do not print out file for "test1234_facet"
+                    if key == "test1234_facet":
+                        pass
+                    else:
+                        # Create unique tag since some facet names are repeated and 
+                        # some file systems can only have unique case insensitive filenames
+                        UNIQUE_TAG = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(8))
 
-                    filename = key+"_results-"+UNIQUE_TAG+".json"
-                    # print "** Filename: ", filename
-                    completeName = os.path.join(save_directory_path, filename)
-                    outfile = open(completeName, "w")
+                        filename = key+"_results-"+UNIQUE_TAG+".json"
+                        
+                        completeName = os.path.join(save_directory_path, filename)
+                        outfile = open(completeName, "w")
 
-                    individual_facet_results[key] = values
-                    json.dump(individual_facet_results, outfile)
+                        individual_facet_results[key] = values
+                        json.dump(individual_facet_results, outfile)
 
 
 def _get_attr_values(facets):
     """
     Use Solr web service calls to get all values and usage count.
     """
-    facet0 = urllib.quote(facets[0])
-    facet1 = urllib.quote(facets[1])
-    facet2 = urllib.quote(facets[2])
-    facet3 = urllib.quote(facets[3])
-    facet4 = urllib.quote(facets[4])
+    # TODO: Better handle when "facets" has less than 5 search terms
+    # Temporary solution is set to default value
+
+    # Create "facets" list that contains 5 elements
+    for i in range(5):
+        if i < len(facets):
+            facets[i] = urllib.quote(facets[i])
+        else:
+            facets.append("test1234_facet")
+    
+
+    # Format search values for use in URL
+    if facets[0]:
+        facet0 = urllib.quote(facets[0])
+    if facets[1]:
+        facet1 = urllib.quote(facets[1])
+    if facets[2]:
+        facet2 = urllib.quote(facets[2])
+    if facets[3]:
+        facet3 = urllib.quote(facets[3])
+    if facets[4]:
+        facet4 = urllib.quote(facets[4])
 
 
     # SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
@@ -161,11 +182,11 @@ def _get_attr_values(facets):
         else:
             print "** Failed with error: ", response.status_code
             
-            dummy_results[facet0] = ["500 error", 0]
-            dummy_results[facet1] = ["500 error", 0]
-            dummy_results[facet2] = ["500 error", 0]
-            dummy_results[facet3] = ["500 error", 0]
-            dummy_results[facet4] = ["500 error", 0]
+            dummy_results[facet0] = [response.status_code, 0]
+            dummy_results[facet1] = [response.status_code, 0]
+            dummy_results[facet2] = [response.status_code, 0]
+            dummy_results[facet3] = [response.status_code, 0]
+            dummy_results[facet4] = [response.status_code, 0]
             
             return dummy_results
 
@@ -189,9 +210,9 @@ if __name__ == '__main__':
     attribute_type_dict = read_attr_type_file()
 
     # Test for attribute types that are case sensitive duplicates
-    dups, dups_frequency = test_for_duplicate_filenames(attribute_type_dict)
+    # dups, dups_frequency = test_for_duplicate_filenames(attribute_type_dict)
 
     # Get values 
-    get_facet_values(attribute_type_dict, dups, dups_frequency)
+    get_facet_values(attribute_type_dict)
 
 
