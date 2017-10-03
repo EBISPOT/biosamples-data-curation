@@ -48,31 +48,7 @@ def read_attr_type_file():
     return attribute_type_dict
 
 
-def test_for_duplicate_filenames(data):
-    """
-    Examine dups in attribute types that are case insensitive.
-    """
-    all_attribute_types = []
-    case_sensitive_dups = []
-    case_sensitive_dups_frequency = {}
-
-    for k,v in data.iteritems():
-        all_attribute_types.append(k.lower())
-
-    attr_list_count = Counter(all_attribute_types).most_common()
-
-    
-    for attr, frequency in attr_list_count:
-        case_sensitive_dups_frequency[attr] = frequency
-        case_sensitive_dups.append(attr)
-
-    print "- Number of Unique Lowercased Facets: ", len(case_sensitive_dups)
-
-    return case_sensitive_dups, case_sensitive_dups_frequency
-
-
 @timing
-# def get_facet_values(attr_type, duplicated_facets, duplicated_facets_frequency):
 def get_facet_values(attr_type):
     """
     Get all facet/attribute type values and their usage count from Solr.
@@ -202,9 +178,6 @@ if __name__ == '__main__':
 
     # Read in file of attribute types
     attribute_type_dict = read_attr_type_file()
-
-    # Test for attribute types that are case sensitive duplicates
-    # dups, dups_frequency = test_for_duplicate_filenames(attribute_type_dict)
 
     # Get values 
     get_facet_values(attribute_type_dict)
