@@ -12,7 +12,6 @@ from collections import Counter
 import string, random
 
 
-
 def timing(f):
     """
     Create wrapper to report time of functions.
@@ -149,10 +148,6 @@ def _get_attr_values(facets):
     if facets[4]:
         facet4 = urllib.quote(facets[4])
 
-
-    # SOLR_URL = "http://beans.ebi.ac.uk:8989/solr/samples/select?" \
-    #             "q=*%3A*&rows=0&wt=json&indent=true&facet=true&" \
-    #             "facet.field={facet:s}".format(facet=facet)
     
     headers = {
         'User-Agent': 'biosamples-curation',
@@ -168,7 +163,6 @@ def _get_attr_values(facets):
                 "facet.limit=-1".format(facet0=facet0, facet1=facet1, \
                     facet2=facet2, facet3=facet3, facet4=facet4)
 
-    t.sleep(0.2)
 
     facet_results = {}
     dummy_results = {}
