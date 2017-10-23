@@ -64,7 +64,6 @@ def get_facet_values(attr_type):
 
         num_attr_review = int(args.num_attr_review) + int(args.restart_attr_count)
         if attr_type_count >= int(args.restart_attr_count) and attr_type_count <= num_attr_review:
-            # print "\n** Attribute Type("+ str(attr_type_count) +"): ", attr_type, attribute_type_dict[attr_type]
             
             search_facets = []
 
@@ -80,7 +79,7 @@ def get_facet_values(attr_type):
                 for key, values in result_values.iteritems():
                     individual_facet_results = {}
 
-                    # Do not print out file for "test1234_facet"
+                    # Do not print out file for placeholder "test1234_facet"
                     if key == "test1234_facet":
                         pass
                     else:
@@ -126,8 +125,7 @@ def _get_attr_values(facets):
 
     
     headers = {
-        'User-Agent': 'biosamples-curation',
-        'From': 'twhetzel@ebi.ac.uk'
+        'User-Agent': 'biosamples-curation'
     }
 
     # NEW SOLR URL FORMAT
@@ -152,11 +150,11 @@ def _get_attr_values(facets):
         else:
             print "** Failed with error: ", response.status_code
             
-            dummy_results[facet0] = [response.status_code, 0]
-            dummy_results[facet1] = [response.status_code, 0]
-            dummy_results[facet2] = [response.status_code, 0]
-            dummy_results[facet3] = [response.status_code, 0]
-            dummy_results[facet4] = [response.status_code, 0]
+            dummy_results[facet0] = [str(response.status_code)+"_error", 0]
+            dummy_results[facet1] = [str(response.status_code)+"_error", 0]
+            dummy_results[facet2] = [str(response.status_code)+"_error", 0]
+            dummy_results[facet3] = [str(response.status_code)+"_error", 0]
+            dummy_results[facet4] = [str(response.status_code)+"_error", 0]
             
             return dummy_results
 
