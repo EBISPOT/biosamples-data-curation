@@ -1,0 +1,8 @@
+pip install future
+pip install six
+pip install pyenchant
+pip install fuzzywuzzy
+pip install -U nltk
+pip install -U numpy
+pip install tqdm
+pip install multiprocess
